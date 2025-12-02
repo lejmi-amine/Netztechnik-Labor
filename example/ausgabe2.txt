@@ -1,8 +1,0 @@
-Graph erfolgreich eingelesen (4 Knoten)
-
-Spanning-Tree {
-  Root: 3
-  A - B
-  C - A
-  D - C
-}
