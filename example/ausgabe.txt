@@ -1,0 +1,10 @@
+Graph erfolgreich eingelesen (6 Knoten)
+
+Spanning-Tree {
+  Root: 1
+  A - B
+  C - D
+  D - B
+  E - D
+  F - E
+}
