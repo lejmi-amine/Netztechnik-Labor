@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spanning Tree Protocol Simulation - TINF24E</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #fafaf9; color: #44403c; }
+        .chart-container { position: relative; width: 100%; max-width: 800px; margin-left: auto; margin-right: auto; height: 400px; max-height: 500px; }
+        .glass-panel { background: rgba(255, 255, 255, 0.9); border: 1px solid #e7e5e4; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .nav-active { border-bottom: 2px solid #d97706; color: #d97706; font-weight: 600; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
+</head>
+<body class="flex flex-col min-h-screen">
+    <nav class="sticky top-0 z-50 bg-[#fafaf9]/95 backdrop-blur border-b border-[#e7e5e4]">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-2">
+                    <span class="text-2xl">🌲</span>
+                    <span class="font-bold text-lg tracking-tight text-[#292524]">STP Simulation</span>
+                </div>
+                <div class="hidden md:flex space-x-8 text-sm">
+                    <button onclick="navTo('intro')" id="btn-intro" class="nav-btn nav-active transition-colors hover:text-[#a8a29e]">Einleitung</button>
+                    <button onclick="navTo('model')" id="btn-model" class="nav-btn transition-colors hover:text-[#a8a29e]">Datenmodell</button>
+                    <button onclick="navTo('sim')" id="btn-sim" class="nav-btn transition-colors hover:text-[#a8a29e]">Simulation</button>
+                    <button onclick="navTo('results')" id="btn-results" class="nav-btn transition-colors hover:text-[#a8a29e]">Ergebnisse</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-6xl mx-auto px-4 py-8 w-full space-y-16">
+
+        <!-- Section 1: Intro & Context -->
+        <section id="intro" class="fade-in scroll-mt-24">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl md:text-5xl font-bold text-[#292524] mb-4">Spanning-Tree-Simulation</h1>
+                <p class="text-xl text-[#78716c] font-light">Eine interaktive Dokumentation des verteilten Algorithmus</p>
+                <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm text-[#57534e]">
+                    <span class="px-3 py-1 bg-[#e7e5e4] rounded-full">Autor: Amine Lejmi & Beric </span>
+                    <span class="px-3 py-1 bg-[#e7e5e4] rounded-full">TINF24E</span>
+                    <span class="px-3 py-1 bg-[#e7e5e4] rounded-full">Netztechnik 1</span>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="glass-panel p-6 rounded-xl">
+                    <h2 class="text-xl font-bold mb-3 text-[#d97706]">📄 Projektziel</h2>
+                    <p class="leading-relaxed text-[#44403c]">
+                        In diesem Laborprojekt wurde ein vereinfachtes, verteiltes <strong>Spanning-Tree-Protokoll (STP)</strong> implementiert. 
+                        Das Ziel ist es, in einem graphbasierten Netzwerk durch lokalen Nachrichtenaustausch (BPDUs) Schleifen zu vermeiden 
+                        und einen logischen Baum zur "Root Bridge" aufzubauen.
+                    </p>
+                </div>
+                <div class="glass-panel p-6 rounded-xl">
+                    <h2 class="text-xl font-bold mb-3 text-[#d97706]">⚙️ Funktionsweise</h2>
+                    <ul class="list-disc list-inside space-y-2 text-[#44403c]">
+                        <li>Initial glaubt jeder Knoten, er sei die <strong>Root</strong>.</li>
+                        <li>Knoten tauschen Nachrichten mit Nachbarn aus.</li>
+                        <li>Entscheidungskriterium: Kleinste Root-ID > Geringste Kosten.</li>
+                        <li>Das System konvergiert automatisch in einen stabilen Zustand.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Data Model -->
+        <section id="model" class="scroll-mt-24">
+            <div class="mb-6 border-l-4 border-[#d97706] pl-4">
+                <h2 class="text-3xl font-bold text-[#292524]">Das Datenmodell</h2>
+                <p class="mt-2 text-[#78716c]">
+                    Um die Simulation zu verstehen, müssen wir die internen Strukturen betrachten, die jeder Netzwerkknoten speichert. 
+                    Diese Matrixstruktur ermöglicht es dem Algorithmus, rein lokal Entscheidungen zu treffen.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Node Structure Card -->
+                <div class="glass-panel p-6 rounded-xl hover:shadow-lg transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold">Node-Struktur</h3>
+                        <span class="text-2xl">🖥️</span>
+                    </div>
+                    <p class="text-sm mb-4 text-[#57534e]">Repräsentiert den Switch selbst und sein aktuelles Wissen über das Netz.</p>
+                    <div class="space-y-3">
+                        <div class="flex justify-between border-b border-[#e7e5e4] pb-1">
+                            <span class="font-mono text-[#d97706]">nodeID</span>
+                            <span>Priorität (kleiner = besser)</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#e7e5e4] pb-1">
+                            <span class="font-mono text-[#d97706]">nextHop</span>
+                            <span>Bester Weg zur Root</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#e7e5e4] pb-1">
+                            <span class="font-mono text-[#d97706]">msgCnt</span>
+                            <span>Anzahl Nachrichten</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Link Structure Card -->
+                <div class="glass-panel p-6 rounded-xl hover:shadow-lg transition-shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-bold">Link-Struktur</h3>
+                        <span class="text-2xl">🔗</span>
+                    </div>
+                    <p class="text-sm mb-4 text-[#57534e]">Speichert Informationen über Verbindungen zu Nachbarn.</p>
+                    <div class="space-y-3">
+                        <div class="flex justify-between border-b border-[#e7e5e4] pb-1">
+                            <span class="font-mono text-[#d97706]">kosten</span>
+                            <span>Leitungskosten (statisch)</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#e7e5e4] pb-1">
+                            <span class="font-mono text-[#d97706]">rootID</span>
+                            <span>Angebotene Root vom Nachbarn</span>
+                        </div>
+                        <div class="flex justify-between border-b border-[#e7e5e4] pb-1">
+                            <span class="font-mono text-[#d97706]">summeKosten</span>
+                            <span>Totalkosten via diesen Nachbarn</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Interactive Simulation -->
+        <section id="sim" class="scroll-mt-24">
+            <div class="mb-6 border-l-4 border-[#d97706] pl-4">
+                <h2 class="text-3xl font-bold text-[#292524]">Interaktive Simulation</h2>
+                <p class="mt-2 text-[#78716c]">
+                    Hier sehen Sie das "Beispiel 1" aus dem Bericht in Aktion. Die Grafik visualisiert die Topologie. 
+                    Verwenden Sie die Steuerelemente, um den verteilten Algorithmus Schritt für Schritt auszuführen.
+                </p>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Controls & Log -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="glass-panel p-5 rounded-xl">
+                        <h3 class="font-bold mb-4 text-[#292524]">Steuerung</h3>
+                        <div class="flex flex-col gap-3">
+                            <button id="btn-step" class="w-full py-3 bg-[#d97706] hover:bg-[#b45309] text-white rounded-lg font-medium transition shadow-sm">
+                                🎲 Einzelschritt simulieren
+                            </button>
+                            <button id="btn-auto" class="w-full py-3 bg-[#e7e5e4] hover:bg-[#d6d3d1] text-[#292524] rounded-lg font-medium transition">
+                                ▶️ Auto-Simulation
+                            </button>
+                            <button id="btn-reset" class="w-full py-2 border border-[#d6d3d1] text-[#57534e] rounded-lg text-sm hover:bg-white transition">
+                                ↺ Reset
+                            </button>
+                        </div>
+                        <div class="mt-4 text-xs text-center text-[#78716c]">
+                            Status: <span id="sim-status" class="font-bold text-[#d97706]">Bereit</span>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-xl h-64 flex flex-col">
+                        <h3 class="font-bold mb-2 text-[#292524]">Event Log</h3>
+                        <div id="log-container" class="flex-grow overflow-y-auto font-mono text-xs bg-[#fafaf9] p-2 rounded border border-[#e7e5e4] text-[#44403c]">
+                            <div class="text-[#a8a29e] italic">> Simulation bereit...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization -->
+                <div class="lg:col-span-2">
+                    <div class="glass-panel p-4 rounded-xl">
+                        <!-- Chart Container as required -->
+                        <div class="chart-container">
+                            <canvas id="networkChart"></canvas>
+                        </div>
+                        <div class="mt-4 flex justify-center gap-6 text-sm text-[#57534e]">
+                            <div class="flex items-center"><span class="w-3 h-3 bg-[#d97706] rounded-full mr-2"></span>Aktive Route</div>
+                            <div class="flex items-center"><span class="w-3 h-3 bg-[#e7e5e4] rounded-full mr-2"></span>Inaktive Kante</div>
+                            <div class="flex items-center"><span class="w-3 h-3 border-2 border-[#d97706] rounded-full mr-2"></span>Aktueller Prozessor</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic State Table -->
+            <div class="mt-8 glass-panel p-6 rounded-xl overflow-x-auto">
+                <h3 class="font-bold mb-4 text-[#292524]">Live-Status der Knoten</h3>
+                <table class="w-full text-sm text-left text-[#44403c]">
+                    <thead class="text-xs text-[#78716c] uppercase bg-[#f5f5f4]">
+                        <tr>
+                            <th class="px-4 py-3">Knoten</th>
+                            <th class="px-4 py-3">Eigene ID</th>
+                            <th class="px-4 py-3 font-bold text-[#d97706]">Glaubt Root Ist</th>
+                            <th class="px-4 py-3">Kosten zur Root</th>
+                            <th class="px-4 py-3">Next Hop (Uplink)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="state-table-body">
+                        <!-- JS renders rows here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Section 4: Results -->
+        <section id="results" class="pb-12 scroll-mt-24">
+            <div class="mb-6 border-l-4 border-[#d97706] pl-4">
+                <h2 class="text-3xl font-bold text-[#292524]">Ergebnisse & Fazit</h2>
+                <p class="mt-2 text-[#78716c]">
+                    Nach der Konvergenz zeigt sich der finale Spanning Tree. Dies entspricht der Ausgabe, 
+                    die das C-Programm im Labor erzeugt hat.
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="glass-panel p-6 rounded-xl bg-[#292524] text-[#fafaf9] font-mono text-sm shadow-xl">
+                    <h3 class="text-[#d97706] mb-4 border-b border-[#44403c] pb-2">Terminal Ausgabe (Beispiel 1)</h3>
+                    <pre class="whitespace-pre-wrap">
+Graph erfolgreich eingelesen (6 Knoten)
+
+Spanning-Tree {
+  Root: 1
+  A - B
+  C - D
+  D - B
+  E - D
+  F - E
+}</pre>
+                </div>
+                
+                <div class="glass-panel p-6 rounded-xl flex flex-col justify-center">
+                    <h3 class="text-xl font-bold mb-4 text-[#292524]">Analyse</h3>
+                    <p class="mb-4">
+                        Die Simulation zeigt korrekt, dass <strong>Knoten B (ID 1)</strong> die Root Bridge wird, da sie die niedrigste Node-ID besitzt.
+                    </p>
+                    <p class="mb-4">
+                        Alle anderen Knoten haben ihre Pfade so optimiert, dass die Kosten zur Root minimiert werden. Schleifen (wie z.B. das Dreieck A-B-C) wurden durch logisches Blockieren redundanter Pfade aufgelöst.
+                    </p>
+                    <div class="mt-auto pt-4 border-t border-[#e7e5e4]">
+                        <p class="text-sm font-semibold text-[#d97706]">Fazit:</p>
+                        <p class="text-sm italic text-[#57534e]">"Die Laboranforderungen wurden vollständig erfüllt. Der Graph wird korrekt eingelesen... und der Algorithmus erfolgreich simuliert."</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-[#292524] text-[#a8a29e] py-8 text-center text-sm">
+        <p>© 2025 Labor Netztechnik 1 | Hochschule DHBW Stuttgart</p>
+        <p class="mt-2 opacity-50">Generiert basierend auf der Dokumentation von Amine Lejmi</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- 1. State Management & Data ---
+        
+        // Definition based on Example 1 in report
+        const nodesData = [
+            { name: 'A', id: 5, x: 2, y: 5 },
+            { name: 'B', id: 1, x: 5, y: 5 },
+            { name: 'C', id: 3, x: 2, y: 2 },
+            { name: 'D', id: 7, x: 5, y: 2 },
+            { name: 'E', id: 6, x: 8, y: 5 },
+            { name: 'F', id: 4, x: 8, y: 2 }
+        ];
+
+        const linksData = [
+            { source: 'A', target: 'B', cost: 10 },
+            { source: 'A', target: 'C', cost: 10 },
+            { source: 'B', target: 'D', cost: 15 },
+            { source: 'B', target: 'E', cost: 10 },
+            { source: 'C', target: 'D', cost: 3 },
+            { source: 'C', target: 'E', cost: 10 },
+            { source: 'D', target: 'E', cost: 2 },
+            { source: 'D', target: 'F', cost: 10 },
+            { source: 'E', target: 'F', cost: 2 }
+        ];
+
+        // Simulation State
+        let nodesState = {}; // Stores runtime state (currentRoot, currentCost, nextHop)
+        let processingNode = null;
+        let iterationCount = 0;
+        let autoSimInterval = null;
+
+        // --- 2. Initialization ---
+
+        function initSimulation() {
+            nodesState = {};
+            iterationCount = 0;
+            processingNode = null;
+            
+            // Initialize: Everyone thinks they are Root (Section 4.1 in report)
+            nodesData.forEach(n => {
+                nodesState[n.name] = {
+                    selfId: n.id,
+                    rootId: n.id, // Initial assumption
+                    costToRoot: 0,
+                    nextHop: n.name // Self
+                };
+            });
+            
+            log("Initialisierung: Alle Knoten halten sich für die Root.");
+            updateTable();
+            if(chart) chart.update();
+            document.getElementById('sim-status').innerText = "Bereit (Iter: 0)";
+        }
+
+        // --- 3. Algorithm Implementation (The Core Logic) ---
+
+        function performStep() {
+            // 1. Pick Random Node (Section 4.2 Step 1)
+            const nodeIndex = Math.floor(Math.random() * nodesData.length);
+            const currentNodeName = nodesData[nodeIndex].name;
+            processingNode = currentNodeName;
+            
+            const state = nodesState[currentNodeName];
+            let changed = false;
+
+            // Log selection
+            // log(`Knoten ${currentNodeName} prüft Nachrichten...`);
+
+            // 2. Check all neighbors (simulated via linksData)
+            // Find all links connected to this node
+            const neighbors = linksData.filter(l => l.source === currentNodeName || l.target === currentNodeName);
+
+            neighbors.forEach(link => {
+                const neighborName = link.source === currentNodeName ? link.target : link.source;
+                const neighborState = nodesState[neighborName];
+                
+                // Calculate offer from neighbor
+                const offerRootId = neighborState.rootId;
+                const offerCost = neighborState.costToRoot + link.cost;
+
+                // Decision Logic (Section 4.2 Step 3)
+                // a) Smaller Root ID?
+                if (offerRootId < state.rootId) {
+                    state.rootId = offerRootId;
+                    state.costToRoot = offerCost;
+                    state.nextHop = neighborName;
+                    changed = true;
+                    log(`⚡ ${currentNodeName} übernimmt Root ${offerRootId} von ${neighborName}`);
+                }
+                // b) Same Root ID but lower cost?
+                else if (offerRootId === state.rootId && offerCost < state.costToRoot) {
+                    state.costToRoot = offerCost;
+                    state.nextHop = neighborName;
+                    changed = true;
+                    log(`📉 ${currentNodeName} optimiert Pfad via ${neighborName} (Kosten: ${offerCost})`);
+                }
+            });
+
+            iterationCount++;
+            document.getElementById('sim-status').innerText = `Laufe... (Iter: ${iterationCount})`;
+            
+            updateTable();
+            chart.update(); // Redraw chart to show active path
+            
+            return changed;
+        }
+
+        // --- 4. Visualization (Chart.js) ---
+
+        const ctx = document.getElementById('networkChart').getContext('2d');
+        
+        // Custom Plugin to draw lines (Edges)
+        const topologyPlugin = {
+            id: 'topologyLines',
+            beforeDatasetsDraw(chart, args, options) {
+                const { ctx, scales: { x, y } } = chart;
+                
+                // Map node names to pixel coordinates
+                const nodeCoords = {};
+                chart.data.datasets[0].data.forEach((d, i) => {
+                    nodeCoords[d.name] = { 
+                        x: x.getPixelForValue(d.x), 
+                        y: y.getPixelForValue(d.y) 
+                    };
+                });
+
+                ctx.save();
+                ctx.lineWidth = 2;
+                
+                linksData.forEach(link => {
+                    const start = nodeCoords[link.source];
+                    const end = nodeCoords[link.target];
+                    
+                    if (!start || !end) return;
+
+                    // Determine color: Is this link part of a Spanning Tree path?
+                    // Check if source's nextHop is target OR target's nextHop is source
+                    const sourceState = nodesState[link.source];
+                    const targetState = nodesState[link.target];
+                    
+                    let isTreeLink = false;
+                    if (sourceState && targetState) {
+                        if ((sourceState.nextHop === link.target && sourceState.rootId === targetState.rootId) || 
+                            (targetState.nextHop === link.source && targetState.rootId === sourceState.rootId)) {
+                            isTreeLink = true;
+                        }
+                    }
+
+                    ctx.beginPath();
+                    ctx.moveTo(start.x, start.y);
+                    ctx.lineTo(end.x, end.y);
+                    
+                    if (isTreeLink) {
+                        ctx.strokeStyle = '#d97706';
+                        ctx.lineWidth = 4;
+                        ctx.setLineDash([]);
+                    } else {
+                        ctx.strokeStyle = '#e5e7eb'; 
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                    }
+                    
+                    ctx.stroke();
+
+                    // Draw Cost Label
+                    const midX = (start.x + end.x) / 2;
+                    const midY = (start.y + end.y) / 2;
+                    ctx.fillStyle = '#78716c';
+                    ctx.font = 'bold 10px Inter';
+                    ctx.fillText(link.cost, midX + 5, midY - 5);
+                });
+                
+                ctx.restore();
+            }
+        };
+
+        const chart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Nodes',
+                    data: nodesData,
+                    backgroundColor: (ctx) => {
+                        const name = ctx.raw?.name;
+                        // Highlight processing node
+                        if (name === processingNode) return '#d97706';
+                        // Highlight Root
+                        if (nodesState[name]?.rootId === nodesState[name]?.selfId && iterationCount > 0 && nodesState[name]?.rootId === 1) return '#10b981'; // Green for true root
+                        return '#44403c'; 
+                    },
+                    pointRadius: 20,
+                    pointHoverRadius: 22
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const n = context.raw;
+                                const s = nodesState[n.name];
+                                return `${n.name} (ID: ${n.id}) | Root: ${s.rootId} | Cost: ${s.costToRoot}`;
+                            }
+                        }
+                    },
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { display: false, min: 0, max: 10 },
+                    y: { display: false, min: 0, max: 8 }
+                },
+                animation: { duration: 400 }
+            },
+            plugins: [topologyPlugin]
+        });
+
+        // --- 5. UI Helpers ---
+
+        function updateTable() {
+            const tbody = document.getElementById('state-table-body');
+            tbody.innerHTML = '';
+            
+            nodesData.forEach(n => {
+                const s = nodesState[n.name];
+                const row = document.createElement('tr');
+                row.className = "border-b border-[#e7e5e4] hover:bg-[#fafaf9]";
+                
+                // Highlight processing row
+                if (n.name === processingNode) row.classList.add('bg-orange-50');
+
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-medium">${n.name}</td>
+                    <td class="px-4 py-3 text-[#78716c]">${s.selfId}</td>
+                    <td class="px-4 py-3 font-bold ${s.rootId === 1 ? 'text-green-600' : 'text-[#d97706]'}">${s.rootId}</td>
+                    <td class="px-4 py-3">${s.costToRoot}</td>
+                    <td class="px-4 py-3 font-mono text-xs">${s.nextHop === n.name ? '-' : s.nextHop}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function log(msg) {
+            const container = document.getElementById('log-container');
+            const div = document.createElement('div');
+            div.className = "mb-1 border-l-2 border-[#d97706] pl-2";
+            div.innerText = msg;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function navTo(id) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('nav-active'));
+            document.getElementById(`btn-${id}`).classList.add('nav-active');
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- 6. Event Listeners ---
+
+        document.getElementById('btn-step').addEventListener('click', () => {
+            if(autoSimInterval) clearInterval(autoSimInterval);
+            performStep();
+        });
+
+        document.getElementById('btn-auto').addEventListener('click', () => {
+            if (autoSimInterval) clearInterval(autoSimInterval);
+            log(">> Starte Auto-Simulation...");
+            autoSimInterval = setInterval(() => {
+                const changed = performStep();
+                // Simple stop condition: if many iterations pass without change, could stop. 
+                // For this demo, let it run or stop manually.
+                if (iterationCount > 100 && !changed) {
+                    clearInterval(autoSimInterval);
+                    log(">> Konvergenz wahrscheinlich erreicht.");
+                    document.getElementById('sim-status').innerText = "Konvergiert";
+                    processingNode = null;
+                    chart.update();
+                }
+            }, 500);
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            if (autoSimInterval) clearInterval(autoSimInterval);
+            initSimulation();
+            log(">> Simulation zurückgesetzt.");
+        });
+
+        // Start
+        initSimulation();
+
+    </script>
+</body>
+</html>
